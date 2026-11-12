@@ -1,6 +1,7 @@
 import cv2 
 import time
 from datetime import datetime
+from pathlib import Path
 
 
 from src.config import load_config, build_stream_url
@@ -9,6 +10,9 @@ from src.stream import open_stream
 
 ESC = 27
 FONT = cv2.FONT_HERSHEY_SIMPLEX
+SCREENSHOT_DIR = Path("screenshots")
+CONFIRM_TIME = 2.0
+
 
 def resize_to_width(frame, width):
     # extracting dimensions: height and width
@@ -18,6 +22,11 @@ def resize_to_width(frame, width):
     return cv2.resize(frame, (width, round(h * width / w)))
 
 
+def draw_text(frame, text, pos):
+    cv2.putText(frame, text, pos, FONT, 0.6, (0, 0, 0), 3, cv2.LINE_AA)
+    cv2.putText(frame, text, pos, FONT, 0.6, (255, 255, 255), 1, cv2.LINE_AA)
+
+    
 def draw_overlay(frame, name, fps):
     # function to overlay framerate, camera name, time etc
     h, w = frame.shape[:2]
@@ -29,9 +38,20 @@ def draw_overlay(frame, name, fps):
         f"{fps:.1f} FPS",
     ]
     for i, text in enumerate(lines):
-        pos = (10, 25 + i * 25)
-        cv2.putText(frame, text, pos, FONT, 0.6, (0, 0, 0), 3, cv2.LINE_AA)
-        cv2.putText(frame, text, pos, FONT, 0.6, (255, 255, 255), 1, cv2.LINE_AA)
+        draw_text(frame, text, (10, 25 + i * 25))
+        
+
+def save_screenshot(frame):
+    # check for screenshot dir, if not found create it
+    SCREENSHOT_DIR.mkdir(exist_ok=True)
+    # getting current date and miliseconds time to create timestamp
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")[:-3]
+    # append stamp to screenshot name
+    path = SCREENSHOT_DIR / f"screenshot_{stamp}.png"
+    
+    if not cv2.imwrite(str(path), frame):
+        return None
+    return path
 
 
 def main():
@@ -42,7 +62,8 @@ def main():
     cap = open_stream(build_stream_url(cfg))
     fps = 0.0
     prev = time.perf_counter()
-    
+    message, message_until = "", 0.0
+
     try:
         while True:
             ok, frame = cap.read()
@@ -60,11 +81,21 @@ def main():
             frame = resize_to_width(frame, width)
             draw_overlay(frame, name, fps)
 
-            
+            if now < message_until:
+                draw_text(frame, message, (10, frame.shape[0] - 15))
+
+
             # close stream window when ESC key entered
             cv2.imshow("IP camera", frame)
-            if cv2.waitKey(1) & 0xFF == ESC:
+            key = cv2.waitKey(1) & 0xFF
+            if key == ESC:
                 break
+
+            if key in (ord("s"), ord("S")):
+                path = save_screenshot(frame)
+                message = f"Saved {path.name}" if path else "Screenshot failed"
+                message_until = time.perf_counter() + CONFIRM_TIME
+
 
     # using finally to ensure block runs on all exit conditions
     finally:

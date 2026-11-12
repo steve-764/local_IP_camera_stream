@@ -1,4 +1,8 @@
 import cv2 
+import time
+from datetime import datetime
+
+
 from src.config import load_config, build_stream_url
 from src.stream import open_stream
 
@@ -6,9 +10,20 @@ from src.stream import open_stream
 ESC = 27
 
 
-def main():
+def resize_to_width(frame, width):
+    # extracting dimensions: height and width
+    h, w = frame.shape[:2]
+    # resizing the image: 
+    # round to ensure new height is always an int
+    return cv2.resize(frame, (width, round(h * width / w)))
 
-    cap = open_stream(build_stream_url(load_config()))
+
+def main():
+    cfg = load_config()
+    name = cfg["camera"]["name"]
+    width = cfg["display"]["width"]
+
+    cap = open_stream(build_stream_url(cfg))
 
     try:
         while True:

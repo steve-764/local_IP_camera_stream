@@ -1,8 +1,12 @@
 # fill with appropriate connection details
 camera:
+  name: # enter camera name
   host: 
   port:
   path: /video
   username: "" 
   password: ""
   use_https: False
+
+display: 
+  width: 800

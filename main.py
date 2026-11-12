@@ -8,7 +8,7 @@ from src.stream import open_stream
 
 
 ESC = 27
-
+FONT = cv2.FONT_HERSHEY_SIMPLEX
 
 def resize_to_width(frame, width):
     # extracting dimensions: height and width
@@ -16,6 +16,21 @@ def resize_to_width(frame, width):
     # resizing the image: 
     # round to ensure new height is always an int
     return cv2.resize(frame, (width, round(h * width / w)))
+
+
+def draw_overlay(frame, name, fps):
+    h, w = frame.shape[:2]
+
+    lines = [
+        name, 
+        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        f"{w}x{h}",
+        f"{fps:.1f} FPS",
+    ]
+    for i, text in enumerate(lines):
+        pos = (10, 25 + i * 25)
+        cv2.putText(frame, text, pos, FONT, 0.6, (0, 0, 0), 3, cv2.LINE_AA)
+        cv2.putText(frame, text, pos, FONT, 0.6, (255, 255, 255), 1, cv2.LINE_AA)
 
 
 def main():

@@ -19,6 +19,7 @@ def resize_to_width(frame, width):
 
 
 def draw_overlay(frame, name, fps):
+    # function to overlay framerate, camera name, time etc
     h, w = frame.shape[:2]
 
     lines = [
@@ -39,7 +40,9 @@ def main():
     width = cfg["display"]["width"]
 
     cap = open_stream(build_stream_url(cfg))
-
+    fps = 0.0
+    prev = time.perf_counter()
+    
     try:
         while True:
             ok, frame = cap.read()
@@ -47,6 +50,17 @@ def main():
                 print("Stream ended or frame read failed")
                 break
 
+
+            now = time.perf_counter()
+            instant = 1.0 / (now - prev) if now > prev else 0.0
+            prev = now
+            fps = instant if fps == 0.0 else 0.9 * fps + 0.1 * instant
+
+
+            frame = resize_to_width(frame, width)
+            draw_overlay(frame, name, fps)
+
+            
             # close stream window when ESC key entered
             cv2.imshow("IP camera", frame)
             if cv2.waitKey(1) & 0xFF == ESC:

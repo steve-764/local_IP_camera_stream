@@ -67,3 +67,8 @@ def build_stream_url(cfg: dict) -> str:
         auth = f"{quote(cam['username'])}:{quote(cam.get('password', ''))}@"
 
     return f"{scheme}://{auth}{cam['host']}:{cam['port']}{cam['path']}"
+
+
+def camera_label(cfg: dict) -> str:
+    cam = cfg["camera"]
+    return f"{cam['host']}:{cam['port']}"

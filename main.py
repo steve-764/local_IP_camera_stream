@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 
 
-from src.config import load_config, build_stream_url
+from src.config import load_config, build_stream_url, camera_label
 from src.stream import open_stream
 
 
@@ -13,6 +13,8 @@ FONT = cv2.FONT_HERSHEY_SIMPLEX
 SCREENSHOT_DIR = Path("screenshots")
 CONFIRM_TIME = 2.0
 RECORDINGS_DIR = Path("recordings")
+MAX_RECONNECTS = 5
+RECONNECT_DELAY = 2.0
 
 
 def resize_to_width(frame, width):
@@ -24,6 +26,7 @@ def resize_to_width(frame, width):
 
 
 def draw_text(frame, text, pos):
+    # set the font, size and position of text displayed on the screen
     cv2.putText(frame, text, pos, FONT, 0.6, (0, 0, 0), 3, cv2.LINE_AA)
     cv2.putText(frame, text, pos, FONT, 0.6, (255, 255, 255), 1, cv2.LINE_AA)
 
@@ -48,14 +51,14 @@ def draw_overlay(frame, name, fps):
         
 
 def save_screenshot(frame):
-    # check for screenshot dir, if not found create it
-    SCREENSHOT_DIR.mkdir(exist_ok=True)
-    # use timestamp funct to name screenshot file
-    path = SCREENSHOT_DIR / f"screenshot_{timestamp()}.png"
-    
-    if not cv2.imwrite(str(path), frame):
+    try:
+        # check for screenshot dir, if not found create it
+        SCREENSHOT_DIR.mkdir(exist_ok=True)
+        # use timestamp funct to name screenshot file
+        path = SCREENSHOT_DIR / f"screenshot_{timestamp()}.png"
+        return path if cv2.imwrite(str(path), frame) else None
+    except OSError:
         return None
-    return path
 
 
 def draw_rec(frame, time):
@@ -68,22 +71,46 @@ def draw_rec(frame, time):
 
 
 def start_recording(frame, fps):
-    RECORDINGS_DIR.mkdir(exist_ok=True)
-    path = RECORDINGS_DIR / f"recording_{timestamp()}.mp4"
+    try:
+        RECORDINGS_DIR.mkdir(exist_ok=True)
+        path = RECORDINGS_DIR / f"recording_{timestamp()}.mp4"
 
-    h, w = frame.shape[:2]
-    # saving the recording path, video encoding codec, fps and resolution to writer
-    writer = cv2.VideoWriter(str(path), cv2.VideoWriter_fourcc(*"mp4v"), fps, (w, h))
-    
+        h, w = frame.shape[:2]
+        # saving the recording path, video encoding codec, fps and resolution to writer
+        writer = cv2.VideoWriter(str(path), cv2.VideoWriter_fourcc(*"mp4v"), fps, (w, h))
+    except OSError:
+        return None, None 
     if not writer.isOpened():
         return None, None
     return writer, path
+
+
+def reconnect(url, label):
+    # attempts to reopen the stream
+    for attempt in range(1, MAX_RECONNECTS + 1):
+        print(f"COnnectio lost! Reconnnecting ({attempt}/{MAX_RECONNECTS})")
+        # if ESC pressed while attempting to reconnect
+        if cv2.waitKey(int(RECONNECT_DELAY * 1000)) & 0xFF == ESC:
+           print("Reconect cancelled") 
+           return None
+
+        try: 
+            cap = open_stream(url, label)
+            print("Reconnected.")
+            return cap
+        except ConnectionError:
+            pass
+
+    print(f"Could not reconnect after {MAX_RECONNECTS} attempts. ")
+    return None
 
 
 def main():
     cfg = load_config()
     name = cfg["camera"]["name"]
     width = cfg["display"]["width"]
+    url = build_stream_url(cfg)
+    label = camera_label(cfg)
 
     cap = open_stream(build_stream_url(cfg))
     fps = 0.0

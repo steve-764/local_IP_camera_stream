@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 
 
-from src.config import load_config, build_stream_url, camera_label
+from src.config import ConfigError,load_config, build_stream_url, camera_label
 from src.stream import open_stream
 
 
@@ -184,6 +184,18 @@ def run():
         cv2.destroyAllWindows()
 
 
+def main():
+    try: 
+        run()
+        return 0
+    except (ConfigError, ConnectionError) as e:
+        print(f"Error: {e}")
+    except KeyboardInterrupt:
+        print("Program stopped by user!")
+        return 0
+    except Exception as e:
+        print("Unexpected error: {e}")
+    return 1
 
 
 if __name__ == "__main__":

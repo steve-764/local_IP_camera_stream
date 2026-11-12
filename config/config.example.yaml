@@ -1,0 +1,8 @@
+# fill with appropriate connection details
+camera:
+  host: 
+  port:
+  path: /video
+  username: "" 
+  password: ""
+  use_https: False

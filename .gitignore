@@ -1,2 +1,4 @@
 requirements.txt
 /cam
+config/config.yaml
+__pycache__/

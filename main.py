@@ -105,14 +105,14 @@ def reconnect(url, label):
     return None
 
 
-def main():
+def run():
     cfg = load_config()
     name = cfg["camera"]["name"]
     width = cfg["display"]["width"]
     url = build_stream_url(cfg)
     label = camera_label(cfg)
 
-    cap = open_stream(build_stream_url(cfg))
+    cap = open_stream(url, label)
     fps = 0.0
     prev = time.perf_counter()
     message, message_until = "", 0.0
@@ -121,21 +121,23 @@ def main():
     try:
         while True:
             ok, frame = cap.read()
-            if not ok: 
-                print("Stream ended or frame read failed")
-                break
-
+            if not ok or frame is None: 
+                cap.release()
+                cap = reconnect(url, label)
+                if cap is None:
+                    print("Stream ended or frame read failed")
+                    break
+                prev = time.perf_counter()
+                continue
 
             now = time.perf_counter()
             instant = 1.0 / (now - prev) if now > prev else 0.0
             prev = now
             fps = instant if fps == 0.0 else 0.9 * fps + 0.1 * instant
 
-
             frame = resize_to_width(frame, width)
             draw_overlay(frame, name, fps)
 
-            #
             if writer:
                 writer.write(frame)
                 draw_rec(frame, now - rec_start)
@@ -160,6 +162,7 @@ def main():
             # making a recording
             if key in (ord("r"), ord("R")):
                 if writer is None:
+                    # if fps value not passed default to 30
                     writer, rec_path = start_recording(frame, fps or 30.0)
                     rec_start = time.perf_counter()
                     message = "Recording started" if writer else "Recording failed"
@@ -175,8 +178,12 @@ def main():
     finally:
         if writer:
             writer.release()
-        cap.release()
+            print(f"Recording saved: {rec_path}")
+        if cap is not None:
+            cap.release()
         cv2.destroyAllWindows()
+
+
 
 
 if __name__ == "__main__":

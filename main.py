@@ -3,23 +3,29 @@ from src.config import load_config, build_stream_url
 from src.stream import open_stream
 
 
+ESC = 27
+
+
 def main():
-    cfg = load_config()
-    cap = open_stream(build_stream_url(cfg))
 
+    cap = open_stream(build_stream_url(load_config()))
 
-    while True:
-        ok, frame = cap.read()
-        if not ok: 
-            print("Stream ended or frame read failed")
-            break
+    try:
+        while True:
+            ok, frame = cap.read()
+            if not ok: 
+                print("Stream ended or frame read failed")
+                break
 
-        cv2.imshow("IP camera", frame)
-        if cv2.waitKey(1) & 0xFF == ord("q"):
-            break
+            # close stream window when ESC key entered
+            cv2.imshow("IP camera", frame)
+            if cv2.waitKey(1) & 0xFF == ESC:
+                break
 
-    cap.release()
-    cv2.destroyAllWindows()
+    # using finally to ensure block runs on all exit conditions
+    finally:
+        cap.release()
+        cv2.destroyAllWindows()
 
 
 if __name__ == "__main__":

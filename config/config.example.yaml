@@ -1,7 +1,7 @@
 # fill with appropriate connection details
 camera:
   name: # enter camera name
-  host: 
+  host: # in format 000.000.000.000 
   port:
   path: /video
   username: "" 

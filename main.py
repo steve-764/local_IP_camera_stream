@@ -88,7 +88,7 @@ def start_recording(frame, fps):
 def reconnect(url, label):
     # attempts to reopen the stream
     for attempt in range(1, MAX_RECONNECTS + 1):
-        print(f"COnnectio lost! Reconnnecting ({attempt}/{MAX_RECONNECTS})")
+        print(f"Connection lost! Reconnnecting ({attempt}/{MAX_RECONNECTS})")
         # if ESC pressed while attempting to reconnect
         if cv2.waitKey(int(RECONNECT_DELAY * 1000)) & 0xFF == ESC:
            print("Reconect cancelled") 

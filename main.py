@@ -6,6 +6,7 @@ from pathlib import Path
 
 from src.config import ConfigError,load_config, build_stream_url, camera_label
 from src.stream import open_stream
+from src.recorder import Recorder
 
 
 ESC = 27
@@ -36,7 +37,7 @@ def timestamp():
     return datetime.now().strftime("%Y%m%d_%H%M%S_")
 
     
-def draw_overlay(frame, name,clock_text, fps):
+def draw_overlay(frame, name, clock_text, fps):
     # function to overlay framerate, camera name, time etc
     h, w = frame.shape[:2]
 
@@ -72,17 +73,18 @@ def draw_rec(frame, time):
 
 def start_recording(frame, fps):
     try:
-        RECORDINGS_DIR.mkdir(exist_ok=True)
-        path = RECORDINGS_DIR / f"recording_{timestamp()}.mp4"
-
-        h, w = frame.shape[:2]
-        # saving the recording path, video encoding codec, fps and resolution to writer
-        writer = cv2.VideoWriter(str(path), cv2.VideoWriter_fourcc(*"mp4v"), fps, (w, h))
+       RECORDINGS_DIR.mkdir(exist_ok=True)
+       path = RECORDINGS_DIR / f"recording_{timestamp()}.mp4"
+       h, w = frame.shape[:2]
+       return Recorder(path, (w, h), fps), path
     except OSError:
         return None, None 
-    if not writer.isOpened():
-        return None, None
-    return writer, path
+
+
+def finish_recording(recorder, path):
+    recorder.stop()
+    note = f"{recorder.dropped} frames droped" if recorder.dropped else ""
+    print(f"Recording saved: {path}{note}")
 
 
 def reconnect(url, label):
@@ -111,12 +113,13 @@ def run():
     width = cfg["display"]["width"]
     url = build_stream_url(cfg)
     label = camera_label(cfg)
+
     clock_text, clock_second = "", 0
     cap = open_stream(url, label)
     fps = 0.0
     prev = time.perf_counter()
     message, message_until = "", 0.0
-    writer, rec_path, rec_start = None, None, 0.0
+    recorder, rec_path, rec_start = None, None, 0.0
 
     try:
         while True:
@@ -140,17 +143,22 @@ def run():
             if second != clock_second:
                 clock_text = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 clock_second = second
+
             frame = resize_to_width(frame, width)
             draw_overlay(frame, name, clock_text, fps)
 
-            if writer:
-                writer.write(frame)
-                draw_rec(frame, now - rec_start)
 
+            if recorder and recorder.error:
+                finish_recording(recorder, rec_path)
+                recorder = None
+                message = "Recodding error: write error"
+                message_until = time.perf_counter() + CONFIRM_TIME
+            if recorder:
+                recorder.write(frame)
+                draw_rec(frame, now - rec_start)
             if now < message_until:
                 draw_text(frame, message, (10, frame.shape[0] - 15))
-            
-            cv2.imshow("IP camera", frame)
+            cv2.imshow("IP Camera", frame)
 
             # close stream window when ESC key entered
             key = cv2.waitKey(1) & 0xFF
@@ -166,23 +174,20 @@ def run():
 
             # making a recording
             if key in (ord("r"), ord("R")):
-                if writer is None:
-                    # if fps value not passed default to 30
-                    writer, rec_path = start_recording(frame, fps or 30.0)
+                if recorder is None:
+                    recorder, rec_path = start_recording(frame, fps or 15.0)
                     rec_start = time.perf_counter()
-                    message = "Recording started" if writer else "Recording failed"
+                    message = "Recording started" if recorder else "Recording failed!"
                 else:
-                    writer.release()
-                    writer = None
+                    finish_recording(recorder, rec_path)
                     message = f"Saved {rec_path}"
-
+                    recorder = None
                 message_until = time.perf_counter() + CONFIRM_TIME
 
     # using finally to ensure block runs on all exit conditions
     finally:
-        if writer:
-            writer.release()
-            print(f"Recording saved: {rec_path}")
+        if recorder:
+            finish_recording(recorder, rec_path)
         if cap is not None:
             cap.release()
         cv2.destroyAllWindows()

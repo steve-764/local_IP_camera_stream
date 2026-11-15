@@ -4,16 +4,12 @@ from requests import exceptions as rex
 
 from .config import ConfigError
 
-OPEN_TIMEOUT_MS = 6000
-READ_TIMEOUT_MS = 6000
+OPEN_TIMEOUT_MS = 5000
+READ_TIMEOUT_MS = 5000
 CHECK_TIMEOUT = (3, 3)
 
 
 def check_camera(url: str, label: str) -> None:
-    """Ask the camera for its headers only, and turn any failure into a clear message.
-
-    Never put str(e) in a message: requests includes the full URL, password and all.
-    """
     try:
         # stream=True fetches the headers without downloading the video body
         with requests.get(url, stream=True, timeout=CHECK_TIMEOUT) as resp:
@@ -28,7 +24,7 @@ def check_camera(url: str, label: str) -> None:
     except rex.SSLError:
         raise ConnectionError(
             f"Secure connection to {label} failed. IP Webcam serves plain http by default, "
-            "so try use_https: false."
+            "so set use_https: false."
         ) from None
     except rex.ConnectionError:
         raise ConnectionError(
@@ -47,12 +43,14 @@ def check_camera(url: str, label: str) -> None:
 
 
 def open_stream(url: str , label: str) -> cv2.VideoCapture:
+    check_camera(url, label)
+    
     params = [
         cv2.CAP_PROP_OPEN_TIMEOUT_MSEC, OPEN_TIMEOUT_MS,
         cv2.CAP_PROP_READ_TIMEOUT_MSEC, READ_TIMEOUT_MS,
     ]
-    cap = cv2.VideoCapture(url)
+    cap = cv2.VideoCapture(url, cv2.CAP_FFMPEG, params)
     if not cap.isOpened():
         cap.release()
-        raise ConnectionError("Cannot access camera stream. Ensure the camera and access devide are on the same network.")
+        raise ConnectionError("Cannot access camera stream. Ensure camera server is started, check the network for both devices and the URL settings in config.yaml file.")
     return cap

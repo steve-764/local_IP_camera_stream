@@ -2,11 +2,11 @@
 camera:
   name: # enter camera name
   host: # in format 000.000.000.000 
-  port:
-  path: /video
-  username: "" 
-  password: ""
-  use_https: False
+  port: # enter valid port number between 1 and 65535
+  path: /video # path must be set to /video
+  username: "" # enter username set on the IP Webcam app
+  password: ""  # enter password set on the IP Webcam app
+  use_https: False 
 
 display: 
-  width: 800
+  width: # set a interger value > 0 

@@ -32,8 +32,8 @@ def draw_text(frame, text, pos):
 
 
 def timestamp():
-    # collect current date and time 
-    return datetime.now().strftime("%Y%m%d_%H%M%S_")[:-3]
+    # collect current date and time
+    return datetime.now().strftime("%Y%m%d_%H%M%S_")
 
     
 def draw_overlay(frame, name,clock_text, fps):

@@ -1,0 +1,5 @@
+# Project dependencies — install with: pip install -r requirements.txt
+opencv-python>=4.8
+numpy>=1.26
+requests>=2.31
+pyyaml

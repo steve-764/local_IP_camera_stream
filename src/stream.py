@@ -8,6 +8,7 @@ OPEN_TIMEOUT_MS = 6000
 READ_TIMEOUT_MS = 6000
 CHECK_TIMEOUT = (3, 3)
 
+
 def check_camera(url: str, label: str) -> None:
     """Ask the camera for its headers only, and turn any failure into a clear message.
 

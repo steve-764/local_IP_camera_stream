@@ -27,7 +27,7 @@ def resize_to_width(frame, width):
 
 def draw_text(frame, text, pos):
     # set the font, size and position of text displayed on the screen
-    cv2.putText(frame, text, pos, FONT, 0.6, (0, 0, 0), 3, cv2.LINE_AA)
+    # cv2.putText(frame, text, pos, FONT, 0.6, (0, 0, 0), 3, cv2.LINE_AA)
     cv2.putText(frame, text, pos, FONT, 0.6, (255, 255, 255), 1, cv2.LINE_AA)
 
 
@@ -36,13 +36,13 @@ def timestamp():
     return datetime.now().strftime("%Y%m%d_%H%M%S_")[:-3]
 
     
-def draw_overlay(frame, name, fps):
+def draw_overlay(frame, name,clock_text, fps):
     # function to overlay framerate, camera name, time etc
     h, w = frame.shape[:2]
 
     lines = [
         name, 
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        clock_text,
         f"{w}x{h}",
         f"{fps:.1f} FPS",
     ]
@@ -111,7 +111,7 @@ def run():
     width = cfg["display"]["width"]
     url = build_stream_url(cfg)
     label = camera_label(cfg)
-
+    clock_text, clock_second = "", 0
     cap = open_stream(url, label)
     fps = 0.0
     prev = time.perf_counter()
@@ -133,10 +133,15 @@ def run():
             now = time.perf_counter()
             instant = 1.0 / (now - prev) if now > prev else 0.0
             prev = now
-            fps = instant if fps == 0.0 else 0.9 * fps + 0.1 * instant
+            fps = instant if fps == 0.0 else 0.95 * fps + 0.05 * instant
 
+            # writing the fps counter once every second rather than per frame
+            second = int(time.time())
+            if second != clock_second:
+                clock_text = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                clock_second = second
             frame = resize_to_width(frame, width)
-            draw_overlay(frame, name, fps)
+            draw_overlay(frame, name, clock_text, fps)
 
             if writer:
                 writer.write(frame)
@@ -172,7 +177,6 @@ def run():
                     message = f"Saved {rec_path}"
 
                 message_until = time.perf_counter() + CONFIRM_TIME
-
 
     # using finally to ensure block runs on all exit conditions
     finally:
